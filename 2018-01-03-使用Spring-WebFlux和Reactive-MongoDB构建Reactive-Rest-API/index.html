@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="技术穷屌的无人区">
+    <meta name="keyword"  content="技术屌丝 Java 服务器架构 中间件">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          使用Spring WebFlux和Reactive MongoDB构建Reactive Rest API - Qiang的博客 | Qiang&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://lvqiang.github.io/2018-01-03-使用Spring-WebFlux和Reactive-MongoDB构建Reactive-Rest-API/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Qiang&#39;s Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://lvqiang.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('/img/home-bg.jpg')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#Spring WebFlux" title="Spring WebFlux">Spring WebFlux</a>
+                        
+                    </div>
+                    <h1>使用Spring WebFlux和Reactive MongoDB构建Reactive Rest API</h1>
+                    <h2 class="subheading"></h2>
+                    <span class="meta">
+                        Posted by Qiang Lv on
+                        2018-01-03
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <blockquote>
+<p>原文：<a href="https://www.callicoder.com/reactive-rest-apis-spring-webflux-reactive-mongo/" target="_blank" rel="external">https://www.callicoder.com/reactive-rest-apis-spring-webflux-reactive-mongo/</a></p>
+</blockquote>
+<p>Spring 5通过引入一个名为Spring WebFlux的全新的反应式框架来支持反应式编程范例。</p>
+<p>Spring WebFlux是一个从下到上的异步框架。 它可以使用Servlet 3.1非阻塞IO API以及其他异步运行时环境（如netty或undertow）在Servlet容器上运行。</p>
+<p>但是现在可以在新的反应框架和传统的Spring MVC之间做出选择。 你可以根据你的使用情况选择使用它们中的任何一个。</p>
+<p>Spring WebFlux使用名为Reactor的库作为反应支持。 Reactor是<a href="https://github.com/reactive-streams/reactive-streams-jvm#reactive-streams" target="_blank" rel="external">Reactive Streams</a>规范的一个实现。</p>
+<p>Reactor提供两种主要类型，称为Flux和Mono。 这两种类型都实现了Reactive Streams提供的Publisher接口。 Flux用于表示0..N个元素的流，Mono用于表示0..1个元素的流。</p>
+<p>尽管Spring使用Reactor作为其大部分内部API的核心依赖，但它也支持在应用程序级别使用RxJava。</p>
+<h3 id="Spring-WebFlux支持的编程模型"><a href="#Spring-WebFlux支持的编程模型" class="headerlink" title="Spring WebFlux支持的编程模型"></a>Spring WebFlux支持的编程模型</h3><p>Spring WebFlux支持两种类型的编程模型：</p>
+<ol>
+<li><p>传统的基于批注的模型，包含@Controller，@RequestMapping和其他在Spring MVC中使用的注解。</p>
+</li>
+<li><p>基于Java 8 lambda的全新功能样式模型，用于路由和处理请求。</p>
+</li>
+</ol>
+<p>在本文中，我们将使用传统的基于注释的编程模型。 我将在以后的文章中介绍功能风格模型。</p>
+<h3 id="让我们在Spring-Boot中构建一个Reactive-Restful服务"><a href="#让我们在Spring-Boot中构建一个Reactive-Restful服务" class="headerlink" title="让我们在Spring Boot中构建一个Reactive Restful服务"></a>让我们在Spring Boot中构建一个Reactive Restful服务</h3><p>在本文中，我们将为迷你Twitter应用程序构建一个Restful API。 该应用程序将只有一个名为Tweet的域模型。 每个Tweet将有一个文本和一个createdAt字段。</p>
+<p>我们将使用MongoDB作为我们的数据存储以及反应型mongodb驱动程序。 我们将构建用于创建，检索，更新和删除Tweet的REST API。 所有的REST API都是异步的，并且会返回一个Publisher。</p>
+<p>我们还将学习如何将数据从数据库传输到客户端。</p>
+<p>最后，我们将编写集成测试，以使用Spring 5提供的新异步WebTestClient测试所有的API。</p>
+<h3 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h3><p>让我们使用Spring Initializr Web应用程序来生成我们的应用程序。 按照以下步骤生成项目 -</p>
+<ol>
+<li>转到<a href="http://start.spring.io" target="_blank" rel="external">http://start.spring.io</a></li>
+<li>选择Spring Boot版本2.x</li>
+<li>输入神器的价值作为webflux演示</li>
+<li>添加Reactive Web和Reactive MongoDB依赖关系</li>
+<li>点击生成项目生成并下载项目。</li>
+</ol>
+<p><img src="https://www.callicoder.com/assets/images/post/large/spring-webflux-reactive-rest-api-with-reactive-mongodb.jpg" alt="image"></p>
+<p>下载项目后，将其解压缩并导入到您最喜欢的IDE中。 该项目的目录结构应该看起来像这样</p>
+<p><img src="https://www.callicoder.com/assets/images/post/large/spring-webflux-reactive-mongodb-rest-api-application-directory-structure.png" alt="image"></p>
+<h3 id="配置MangoDB"><a href="#配置MangoDB" class="headerlink" title="配置MangoDB"></a>配置MangoDB</h3><p>可以通过简单地将以下属性添加到application.properties文件来配置MongoDB -</p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">spring<span class="selector-class">.data</span><span class="selector-class">.mongodb</span><span class="selector-class">.uri</span>=mongodb:<span class="comment">//localhost:27017/webflux_demo</span></div></pre></td></tr></table></figure>
+<p>Spring Boot将在启动时读取此配置并自动配置数据源。</p>
+<h3 id="创建Domain对象"><a href="#创建Domain对象" class="headerlink" title="创建Domain对象"></a>创建Domain对象</h3><p>让我们来创建我们的领域模型 - Tweet。 在com.example.webfluxdemo包内创建一个名为model的新包，然后用下面的内容创建一个名为Tweet.java的文件 -</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">package</span> com.example.webfluxdemo.model;</div><div class="line"></div><div class="line"><span class="meta">@Document</span>(collection = <span class="string">"tweets"</span>)</div><div class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Tweet</span> </span>&#123;</div><div class="line"></div><div class="line">    <span class="meta">@Id</span></div><div class="line">    <span class="keyword">private</span> String id;</div><div class="line"></div><div class="line">    <span class="meta">@NotBlank</span></div><div class="line">    <span class="meta">@Size</span>(max = <span class="number">140</span>)</div><div class="line">    <span class="keyword">private</span> String text;</div><div class="line"></div><div class="line">    <span class="meta">@NotNull</span></div><div class="line">    <span class="keyword">private</span> Date createdAt = <span class="keyword">new</span> Date();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>够简单！ Tweet模型包含一个文本和一个createdAt字段。 该文本字段使用@NotBlank和@Size注释进行注释，以确保它不是空白，并且最多有140个字符。</p>
+<h3 id="创建Repository"><a href="#创建Repository" class="headerlink" title="创建Repository"></a>创建Repository</h3><p>接下来，我们将创建将用于访问MongoDB数据库的数据访问层。 在com.example.webfluxdemo中创建一个名为repository的新包，然后用下面的内容创建一个名为TweetRepository.java的新文件 -</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">package</span> com.example.webfluxdemo.repository;</div><div class="line"></div><div class="line"><span class="meta">@Repository</span></div><div class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">TweetRepository</span> <span class="keyword">extends</span> <span class="title">ReactiveMongoRepository</span>&lt;<span class="title">Tweet</span>, <span class="title">String</span>&gt; </span>&#123;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>TweetRepository接口从ReactiveMongoRepository扩展而来，在ReactiveMongoRepository中公开了文档上的各种CRUD方法。</p>
+<p>Spring Boot会在运行时自动插入一个名为SimpleReactiveMongoRepository的接口的实现。</p>
+<p>因此，您可以轻松获得文档上的所有CRUD方法，而无需编写任何代码。 以下是SimpleReactiveMongoRepository提供的一些方法 -</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">eactor.core.publisher.<span class="function">Flux&lt;T&gt;  <span class="title">findAll</span><span class="params">()</span></span>;</div><div class="line"></div><div class="line">reactor.core.publisher.<span class="function">Mono&lt;T&gt;  <span class="title">findById</span><span class="params">(ID id)</span></span>;</div><div class="line"></div><div class="line">&lt;S extends T&gt; reactor.core.publisher.<span class="function">Mono&lt;S&gt;  <span class="title">save</span><span class="params">(S entity)</span></span>;</div><div class="line"></div><div class="line">reactor.core.publisher.<span class="function">Mono&lt;Void&gt;   <span class="title">delete</span><span class="params">(T entity)</span></span>;</div></pre></td></tr></table></figure>
+<p>请注意，所有方法都是异步的，并以Flux或Mono类型的形式返回发布者。</p>
+<h3 id="创建Controller"><a href="#创建Controller" class="headerlink" title="创建Controller"></a>创建Controller</h3><p>最后，让我们编写将暴露给客户端的API。 在com.example.webfluxdemo中创建一个名为controller的新包，然后使用以下内容创建一个名为TweetController.java的新文件 -</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">package</span> com.example.webfluxdemo.controller;</div><div class="line"></div><div class="line"><span class="meta">@RestController</span></div><div class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TweetController</span> </span>&#123;</div><div class="line"></div><div class="line">    <span class="meta">@Autowired</span></div><div class="line">    <span class="keyword">private</span> TweetRepository tweetRepository;</div><div class="line"></div><div class="line">    <span class="meta">@GetMapping</span>(<span class="string">"/tweets"</span>)</div><div class="line">    <span class="function"><span class="keyword">public</span> Flux&lt;Tweet&gt; <span class="title">getAllTweets</span><span class="params">()</span> </span>&#123;</div><div class="line">        <span class="keyword">return</span> tweetRepository.findAll();</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@PostMapping</span>(<span class="string">"/tweets"</span>)</div><div class="line">    <span class="function"><span class="keyword">public</span> Mono&lt;Tweet&gt; <span class="title">createTweets</span><span class="params">(@Valid @RequestBody Tweet tweet)</span> </span>&#123;</div><div class="line">        <span class="keyword">return</span> tweetRepository.save(tweet);</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@GetMapping</span>(<span class="string">"/tweets/&#123;id&#125;"</span>)</div><div class="line">    <span class="keyword">public</span> Mono&lt;ResponseEntity&lt;Tweet&gt;&gt; getTweetById(<span class="meta">@PathVariable</span>(value = <span class="string">"id"</span>) String tweetId) &#123;</div><div class="line">        <span class="keyword">return</span> tweetRepository.findById(tweetId)</div><div class="line">                .map(savedTweet -&gt; ResponseEntity.ok(savedTweet))</div><div class="line">                .defaultIfEmpty(ResponseEntity.notFound().build());</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@PutMapping</span>(<span class="string">"/tweets/&#123;id&#125;"</span>)</div><div class="line">    <span class="keyword">public</span> Mono&lt;ResponseEntity&lt;Tweet&gt;&gt; updateTweet(<span class="meta">@PathVariable</span>(value = <span class="string">"id"</span>) String tweetId,</div><div class="line">                                                   <span class="meta">@Valid</span> <span class="meta">@RequestBody</span> Tweet tweet) &#123;</div><div class="line">        <span class="keyword">return</span> tweetRepository.findById(tweetId)</div><div class="line">                .flatMap(existingTweet -&gt; &#123;</div><div class="line">                    existingTweet.setText(tweet.getText());</div><div class="line">                    <span class="keyword">return</span> tweetRepository.save(existingTweet);</div><div class="line">                &#125;)</div><div class="line">                .map(updatedTweet -&gt; <span class="keyword">new</span> ResponseEntity&lt;&gt;(updatedTweet, HttpStatus.OK))</div><div class="line">                .defaultIfEmpty(<span class="keyword">new</span> ResponseEntity&lt;&gt;(HttpStatus.NOT_FOUND));</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@DeleteMapping</span>(<span class="string">"/tweets/&#123;id&#125;"</span>)</div><div class="line">    <span class="keyword">public</span> Mono&lt;ResponseEntity&lt;Void&gt;&gt; deleteTweet(<span class="meta">@PathVariable</span>(value = <span class="string">"id"</span>) String tweetId) &#123;</div><div class="line"></div><div class="line">        <span class="keyword">return</span> tweetRepository.findById(tweetId)</div><div class="line">                .flatMap(existingTweet -&gt;</div><div class="line">                        tweetRepository.delete(existingTweet)</div><div class="line">                            .then(Mono.just(<span class="keyword">new</span> ResponseEntity&lt;Void&gt;(HttpStatus.OK)))</div><div class="line">                )</div><div class="line">                .defaultIfEmpty(<span class="keyword">new</span> ResponseEntity&lt;&gt;(HttpStatus.NOT_FOUND));</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="comment">// Tweets are Sent to the client as Server Sent Events</span></div><div class="line">    <span class="meta">@GetMapping</span>(value = <span class="string">"/stream/tweets"</span>, produces = MediaType.TEXT_EVENT_STREAM_VALUE)</div><div class="line">    <span class="function"><span class="keyword">public</span> Flux&lt;Tweet&gt; <span class="title">streamAllTweets</span><span class="params">()</span> </span>&#123;</div><div class="line">        <span class="keyword">return</span> tweetRepository.findAll();</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>所有的Controller端点都以Flux或Mono的形式返回一个Publisher。 最后一个端点非常有趣，我们将content-type设置为text / event-stream。 它发送服务器发送事件形式的微博到这样的浏览器 -</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">data: &#123;<span class="string">"id"</span>:<span class="string">"59ba5389d2b2a85ed4ebdafa"</span>,<span class="string">"text"</span>:<span class="string">"tweet1"</span>,<span class="string">"createdAt"</span>:<span class="number">1505383305602</span>&#125;</div><div class="line">data: &#123;<span class="string">"id"</span>:<span class="string">"59ba5587d2b2a85f93b8ece7"</span>,<span class="string">"text"</span>:<span class="string">"tweet2"</span>,<span class="string">"createdAt"</span>:<span class="number">1505383814847</span>&#125;</div></pre></td></tr></table></figure>
+<p>现在我们正在讨论事件流，您可能会问，以下端点是否也返回一个流？</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"><span class="meta">@GetMapping</span>(<span class="string">"/tweets"</span>)</div><div class="line"><span class="function"><span class="keyword">public</span> Flux&lt;Tweet&gt; <span class="title">getAllTweets</span><span class="params">()</span> </span>&#123;</div><div class="line">    <span class="keyword">return</span> tweetRepository.findAll();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>答案是肯定的 Flux<tweet>表示推文流。 但是，默认情况下，它将生成一个JSON数组，因为如果一个单独的JSON对象流被发送到浏览器，那么它将不是一个有效的JSON文档。 除了使用Server-Sent-Events或WebSocket之外，浏览器客户端无法使用流。</tweet></p>
+<p>但是，非浏览器客户端可以通过将Accept头部设置为application / stream + json来请求JSON流，并且响应将是类似于Server-Sent-Events的JSON流，但是不需要额外的格式：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">&#123;<span class="attr">"id"</span>:<span class="string">"59ba5389d2b2a85ed4ebdafa"</span>,<span class="attr">"text"</span>:<span class="string">"tweet1"</span>,<span class="attr">"createdAt"</span>:<span class="number">1505383305602</span>&#125;</div><div class="line">&#123;<span class="attr">"id"</span>:<span class="string">"59ba5587d2b2a85f93b8ece7"</span>,<span class="attr">"text"</span>:<span class="string">"tweet2"</span>,<span class="attr">"createdAt"</span>:<span class="number">1505383814847</span>&#125;</div></pre></td></tr></table></figure>
+<h3 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h3><p>Spring 5还提供了一个名为WebClient的异步和反应的http客户端，用于处理异步和流API。 这是RestTemplate的一个被动的选择。</p>
+<p>此外，您还可以获得用于编写集成测试的WebTestClient。 测试客户端可以在现场服务器上运行，也可以使用模拟请求和响应。</p>
+<p>我们将使用WebTestClient为我们的REST API编写集成测试。 打开WebfluxDemoApplicationTests.java文件，并将以下测试添加到它 -</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">package</span> com.example.webfluxdemo;</div><div class="line"></div><div class="line"><span class="keyword">import</span> java.util.Collections;</div><div class="line"></div><div class="line"><span class="meta">@RunWith</span>(SpringRunner.class)</div><div class="line"><span class="meta">@SpringBootTest</span>(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)</div><div class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WebfluxDemoApplicationTests</span> </span>&#123;</div><div class="line"></div><div class="line">	<span class="meta">@Autowired</span></div><div class="line">	<span class="keyword">private</span> WebTestClient webTestClient;</div><div class="line"></div><div class="line">	<span class="meta">@Autowired</span></div><div class="line">    TweetRepository tweetRepository;</div><div class="line"></div><div class="line">	<span class="meta">@Test</span></div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testCreateTweet</span><span class="params">()</span> </span>&#123;</div><div class="line">		Tweet tweet = <span class="keyword">new</span> Tweet(<span class="string">"This is a Test Tweet"</span>);</div><div class="line"></div><div class="line">		webTestClient.post().uri(<span class="string">"/tweets"</span>)</div><div class="line">				.contentType(MediaType.APPLICATION_JSON_UTF8)</div><div class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)</div><div class="line">                .body(Mono.just(tweet), Tweet.class)</div><div class="line">				.exchange()</div><div class="line">				.expectStatus().isOk()</div><div class="line">				.expectHeader().contentType(MediaType.APPLICATION_JSON_UTF8)</div><div class="line">				.expectBody()</div><div class="line">                .jsonPath(<span class="string">"$.id"</span>).isNotEmpty()</div><div class="line">                .jsonPath(<span class="string">"$.text"</span>).isEqualTo(<span class="string">"This is a Test Tweet"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="meta">@Test</span></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testGetAllTweets</span><span class="params">()</span> </span>&#123;</div><div class="line">	    webTestClient.get().uri(<span class="string">"/tweets"</span>)</div><div class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)</div><div class="line">                .exchange()</div><div class="line">                .expectStatus().isOk()</div><div class="line">                .expectHeader().contentType(MediaType.APPLICATION_JSON_UTF8)</div><div class="line">                .expectBodyList(Tweet.class);</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@Test</span></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testGetSingleTweet</span><span class="params">()</span> </span>&#123;</div><div class="line">        Tweet tweet = tweetRepository.save(<span class="keyword">new</span> Tweet(<span class="string">"Hello, World!"</span>)).block();</div><div class="line"></div><div class="line">        webTestClient.get()</div><div class="line">                .uri(<span class="string">"/tweets/&#123;id&#125;"</span>, Collections.singletonMap(<span class="string">"id"</span>, tweet.getId()))</div><div class="line">                .exchange()</div><div class="line">                .expectStatus().isOk()</div><div class="line">                .expectBody()</div><div class="line">                .consumeWith(response -&gt;</div><div class="line">                        Assertions.assertThat(response.getResponseBody()).isNotNull());</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@Test</span></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testUpdateTweet</span><span class="params">()</span> </span>&#123;</div><div class="line">        Tweet tweet = tweetRepository.save(<span class="keyword">new</span> Tweet(<span class="string">"Initial Tweet"</span>)).block();</div><div class="line"></div><div class="line">        Tweet newTweetData = <span class="keyword">new</span> Tweet(<span class="string">"Updated Tweet"</span>);</div><div class="line"></div><div class="line">        webTestClient.put()</div><div class="line">                .uri(<span class="string">"/tweets/&#123;id&#125;"</span>, Collections.singletonMap(<span class="string">"id"</span>, tweet.getId()))</div><div class="line">                .contentType(MediaType.APPLICATION_JSON_UTF8)</div><div class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)</div><div class="line">                .body(Mono.just(newTweetData), Tweet.class)</div><div class="line">                .exchange()</div><div class="line">                .expectStatus().isOk()</div><div class="line">                .expectHeader().contentType(MediaType.APPLICATION_JSON_UTF8)</div><div class="line">                .expectBody()</div><div class="line">                .jsonPath(<span class="string">"$.text"</span>).isEqualTo(<span class="string">"Updated Tweet"</span>);</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@Test</span></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testDeleteTweet</span><span class="params">()</span> </span>&#123;</div><div class="line">	    Tweet tweet = tweetRepository.save(<span class="keyword">new</span> Tweet(<span class="string">"To be deleted"</span>)).block();</div><div class="line"></div><div class="line">	    webTestClient.delete()</div><div class="line">                .uri(<span class="string">"/tweets/&#123;id&#125;"</span>, Collections.singletonMap(<span class="string">"id"</span>,  tweet.getId()))</div><div class="line">                .exchange()</div><div class="line">                .expectStatus().isOk();</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>在上面的例子中，我已经为所有的CRUD API编写了测试。 您可以转到项目的根目录并键入mvn test来运行测试。</p>
+<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><p>在本文中，我们学习了Spring的反应式编程基础知识，并使用Spring WebFlux框架提供的反应式支持构建了一个简单的Restful服务。 我们还使用WebTestClient测试了所有Rest API。</p>
+<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p><a href="https://youtu.be/rdgJ8fOxJhc" target="_blank" rel="external">Reactive Web Applications with Spring 5</a> - By Rossen Stoyanchev</p>
+<p><a href="https://youtu.be/Cj4foJzPF80" target="_blank" rel="external">Developing Reactive applications with Reactive Streams and Java 8</a> - By Brian Clozel, Sébastien Deleuze</p>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/2017-12-14-微服务-通讯模式/" data-toggle="tooltip" data-placement="top" title="微服务-通讯模式">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+                <!-- disqus 评论框 start -->
+                <div class="comment">
+                    <div id="disqus_thread" class="disqus-thread"></div>
+                </div>
+                <!-- disqus 评论框 end -->
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#Spring WebFlux" title="Spring WebFlux">Spring WebFlux</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="http://microservices.io" target="_blank">Microservice</a></li>
+                    
+                        <li><a href="http://blog.didispace.com" target="_blank">程序猿DD</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+<!-- disqus 公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES * * */
+    var disqus_shortname = "hexo-theme-huxblog";
+    var disqus_identifier = "https://lvqiang.github.io/2018-01-03-使用Spring-WebFlux和Reactive-MongoDB构建Reactive-Rest-API/";
+    var disqus_url = "https://lvqiang.github.io/2018-01-03-使用Spring-WebFlux和Reactive-MongoDB构建Reactive-Rest-API/";
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<!-- disqus 公共JS代码 end -->
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'always',
+          placement: 'right',
+          icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Qiang&#39;s Blog 2018 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> 
+                 </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://lvqiang.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://lvqiang.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
